@@ -1,48 +1,56 @@
-<div align="center">
+# Plataforma Eventify Global — Sistema Backend NoSQL 
 
-# Plataforma Eventify Global — Plataforma NoSQL
-
-<img src="https://img.shields.io/badge/Status-Completado-success?style=for-the-badge&logo=none" alt="Status">
-<img src="https://img.shields.io/badge/Database-MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB">
-<img src="https://img.shields.io/badge/Backend-Spring%20Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot">
-<img src="https://img.shields.io/badge/Architecture-Microservices-blue?style=for-the-badge&logo=microservices&logoColor=white" alt="Architecture">
-
-*Modernización de la infraestructura tecnológica para la venta masiva de entradas a eventos, migrando desde un modelo relacional hacia un diseño orientado a documentos en MongoDB[cite: 1, 2].*
-
-</div>
+> **Caso Semestral de Bases de Datos No Relacionales** | **Carrera:** Ingeniería en Informática (Duoc UC)
+> **Autores:** Dairys Bernal, Amaru Burdiles, Florencia Soto
 
 ---
 
-##  Contexto del Proyecto
-
-**Eventify Global** experimentaba caídas de rendimiento críticas durante picos de demanda (como lanzamientos de artistas masivos o Cyber Days) debido al alto costo de los `JOINs` en su infraestructura relacional previa[cite: 2]. 
-
-Para solucionar los problemas de concurrencia y bloqueos, se rediseñó la arquitectura de datos implementando **MongoDB**, permitiendo que la unidad de lectura coincida con la unidad de negocio: **la ficha completa de un evento se recupera en una sola lectura atómica**[cite: 2].
+## 1. Resumen Ejecutivo del Proyecto
+**Eventify Global** enfrentaba cuellos de botella críticos de rendimiento y bloqueos de concurrencia en su infraestructura relacional heredada al momento de enfrentar picos de tráfico masivo (conciertos de alta demanda y campañas de ventas). Este repositorio documenta la migración integral hacia una arquitectura orientada a documentos en **MongoDB**, redefiniendo el diseño de esquemas, validaciones estrictas y una batería completa de consultas analíticas avanzadas (*Aggregation Framework*).
 
 ---
 
-## Arquitectura y Modelo de Datos
+## 2. Arquitectura de Datos y Decisiones de Modelado
 
-La base de datos `no-sql-ev2` está compuesta por **4 colecciones** con reglas estrictas de validación mediante `$jsonSchema`[cite: 2]:
+Para optimizar los patrones de lectura y escritura bajo alta concurrencia, se estructuró la base de datos `no-sql-ev2` en **4 colecciones principales**:
 
-| Colección | Rol Principal | Patrón Aplicado |
-| :--- | :--- | :--- |
-| **`usuarios`** | Clientes y administradores del sistema[cite: 2] | Documento plano (Validación estricta de RUN, DV y Correo)[cite: 2, 3] |
-| **`eventos`** | Catálogo central, recintos y configuración de entradas[cite: 2] | **Embebido** (Ubicación geográfica y tickets estructurados)[cite: 2, 4] |
-| **`ordenes_compra`** | Registro transaccional de compras[cite: 2] | **Referenciado** (`usuario_id`, `evento_id` vía `ObjectId`)[cite: 2, 4] |
-| **`review_evaluaciones`** | Calificaciones (0-5) y comentarios post-evento[cite: 2] | **Referenciado** (`usuario_id`, `evento_id` vía `ObjectId`)[cite: 2, 4] |
+### A. Colecciones y Estrategias de Almacenamiento
+* **`usuarios`**: Almacena clientes y administradores bajo un **documento plano** con validación estricta de RUN, DV y correo electrónico.
+* **`eventos`**: Colección central que implementa el **patrón de embebido** para *ubicación* y *tickets*. Esto permite que la ficha de un evento se recupere en **una sola lectura atómica**, eliminando `JOINs` costosos.
+* **`ordenes_compra`**: Registro transaccional vinculado mediante **referencias (`ObjectId`)** hacia usuarios y eventos, garantizando escalabilidad ante escrituras masivas concurrentes.
+* **`review_evaluaciones`**: Almacena calificaciones (0-5) y comentarios mediante **referencias (`ObjectId`)**, permitiendo análisis de satisfacción independientes.
 
-> **Regla de Diseño:** Se embebe lo que se lee junto, es acotado y cambia poco (ej. *ubicación y tickets de un evento*); se referencia lo que crece sin límite, se escribe masivamente y se consulta de forma independiente (ej. *órdenes de compra y reseñas*)[cite: 4, 5].
+### B. Principio de Diseño Aplicado
+> *"Se embebe lo que se lee junto, es acotado y cambia poco. Se referencia lo que crece sin límite, se escribe constantemente y se consulta por sí mismo."*
 
 ---
 
-## 🔍 Batería de Consultas Analíticas
+## 3. Implementación de la Batería de Consultas Analíticas
 
-El proyecto incluye un conjunto robusto de consultas avanzadas de agregación (*Aggregation Framework*):
+El motor de agregación de MongoDB resuelve los requerimientos analíticos complejos del negocio de la siguiente manera:
 
-1. **Historial de Compras por Usuario:** Cruce de colecciones (`$lookup`, `$unwind`) para filtrar por RUN y ciudad, calculando el gasto total y desglosando las transacciones[cite: 5].
-2. **Reporte de Ventas por Evento:** Procesamiento 100% interno sin uniones, calculando recaudación total, tickets vendidos, porcentaje de ocupación y etiquetado automático (*"Exitoso"* o *"Por Mejorar"*)[cite: 5, 6].
-3. **Eventos Futuros con Oferta de Tickets:** Filtrado avanzado usando `$$NOW`, `$elemMatch` y `$filter` para localizar eventos próximos que cumplan con criterios específicos de precio y disponibilidad[cite: 6].
-4. **Relación Precio-Satisfacción:** Cruce analítico que contrasta el precio promedio de los tickets (calculado mediante `$avg` directo sobre arreglos embebidos) frente a la calificación promedio de los usuarios[cite: 6, 7].
+1. **Consulta 1 — Detalle de Compras por Usuario:** 
+   * *Mecanismo:* Uso de `$lookup` sucesivos y `$unwind` para cruzar la identidad del usuario con sus órdenes de compra y los eventos asociados, filtrando por ciudad y calculando el gasto total acumulado mediante `$group` y `$sum`.
+2. **Consulta 2 — Reporte de Ventas por Evento:** 
+   * *Mecanismo:* Procesamiento puramente interno sobre arreglos embebidos (`$addFields`, `$map`) sin requerir `JOINs`. Calcula el total recaudado, los tickets vendidos y el porcentaje de ocupación, asignando etiquetas automáticas de rendimiento (*"Exitoso"* o *"Por Mejorar"*) vía `$cond`.
+3. **Consulta 3 — Eventos Futuros con Oferta de Tickets:** 
+   * *Mecanismo:* Filtrado temporal estricto usando la variable del sistema `$$NOW`, validación geográfica y uso clave de `$elemMatch` para asegurar que un mismo tipo de ticket cumpla simultáneamente con stock disponible y precio bajo el umbral, proyectando solo los elementos filtrados con `$filter`.
+4. **Consulta 4 — Relación Precio-Satisfacción (Elemento Diferenciador):** 
+   * *Mecanismo:* Cruce analítico con `review_evaluaciones` para evaluar la percepción del cliente frente al costo. Emplea operadores `$avg` directos sobre subdocumentos y protege contra divisiones por cero con `$size` y `$cond`, devolviendo etiquetas semánticas claras (*"Sin evaluaciones"*).
 
+---
 
+## 4. Scripts de Inicialización y Carga (Seed Data)
+
+El repositorio incluye la automatización completa para la creación de esquemas y población masiva de datos de prueba (más de 50 documentos validados por colección):
+
+* **Definición de Esquemas y Validaciones (`$jsonSchema`):** `solucion.mongodb.js`
+* **Generación de Datos de Prueba (Seed):** `init.db.js`
+
+### Instrucciones de Ejecución en MongoDB Shell / Compass:
+```javascript
+// 1. Crear colecciones y reglas de validación estricta
+load("solucion.mongodb.js");
+
+// 2. Ejecutar la carga masiva de datos de prueba (Seed)
+load("init.db.js");
