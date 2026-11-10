@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎟️ Eventify Global — Plataforma NoSQL
+# Plataforma Eventify Global — Plataforma NoSQL
 
 <img src="https://img.shields.io/badge/Status-Completado-success?style=for-the-badge&logo=none" alt="Status">
 <img src="https://img.shields.io/badge/Database-MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB">
@@ -13,7 +13,7 @@
 
 ---
 
-## 📌 Contexto del Proyecto
+##  Contexto del Proyecto
 
 **Eventify Global** experimentaba caídas de rendimiento críticas durante picos de demanda (como lanzamientos de artistas masivos o Cyber Days) debido al alto costo de los `JOINs` en su infraestructura relacional previa[cite: 2]. 
 
@@ -21,7 +21,7 @@ Para solucionar los problemas de concurrencia y bloqueos, se rediseñó la arqui
 
 ---
 
-## 🏗️ Arquitectura y Modelo de Datos
+## Arquitectura y Modelo de Datos
 
 La base de datos `no-sql-ev2` está compuesta por **4 colecciones** con reglas estrictas de validación mediante `$jsonSchema`[cite: 2]:
 
@@ -45,10 +45,4 @@ El proyecto incluye un conjunto robusto de consultas avanzadas de agregación (*
 3. **Eventos Futuros con Oferta de Tickets:** Filtrado avanzado usando `$$NOW`, `$elemMatch` y `$filter` para localizar eventos próximos que cumplan con criterios específicos de precio y disponibilidad[cite: 6].
 4. **Relación Precio-Satisfacción:** Cruce analítico que contrasta el precio promedio de los tickets (calculado mediante `$avg` directo sobre arreglos embebidos) frente a la calificación promedio de los usuarios[cite: 6, 7].
 
----
 
-## ⚙️ Configuración y Ejecución
-
-1. **Clonar el repositorio:**
-   ```bash
-   git clone [https://github.com/tu-usuario/Microservicio_sakura_agenda.git](https://github.com/tu-usuario/Microservicio_sakura_agenda.git)
