@@ -4,4 +4,4 @@ import os
 
 load_dotenv()
 client = MongoClient(os.getenv("MONGO_URI"))
-db = client[os.getenv("no-sql-ev2")]
+db = client[os.getenv("DATABASE_NAME")]
