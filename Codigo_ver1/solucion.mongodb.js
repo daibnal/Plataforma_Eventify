@@ -202,7 +202,7 @@ db.usuarios.aggregate([
 			gasto_total: { $sum: "$ordenes.total" },
 			compras_desglosadas: {
 				$push: {
-					orden_id: "$ordenes._id",
+					orden_id: {"$toString": "$ordenes._id"},
 					evento: "$evento_info.titulo",
 					codigo: "$evento_info.codigo",
 					tipo: "$evento_info.tipo",
