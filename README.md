@@ -89,8 +89,10 @@ uvicorn api.app:app --reload --port 8000
 ```
 
 5. En otra terminal (con el entorno virtual activo), ejecute el dashboard:
-```streamlit run dashboard/app.py
 ```
+streamlit run dashboard/app.py
+```
+
 La documentación interactiva queda disponible en http://127.0.0.1:8000/docs y el dashboard en http://localhost:8501.
 
 ## Endpoints CRUD expuestos (/api/v1)
