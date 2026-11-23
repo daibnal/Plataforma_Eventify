@@ -38,6 +38,12 @@ def filtro_por_codigo(codigo: str):
 
 @router.post("/")
 def crear_evento(e: Evento):
+    if e.fecha_hora_fin <= e.fecha_hora_ini:
+        raise HTTPException(
+            status_code=400,
+            detail="La fecha y hora de término debe ser posterior a la de inicio"
+        )
+
     resultado = agregar_evento(e)
     if not resultado:
         raise HTTPException(
