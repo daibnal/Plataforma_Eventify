@@ -358,11 +358,16 @@ with crud_post:
 
         submit_post = st.form_submit_button("Crear Evento")
         if submit_post:
+            inicio = datetime.combine(fecha_ini, hora_ini)
+            fin = datetime.combine(fecha_fin, hora_fin)
+
             if not (codigo and titulo and descripcion and calle):
                 st.error("Completa todos los campos obligatorios marcados con *.")
+            elif fin <= inicio:
+                st.error("La fecha y hora de término debe ser posterior a la de inicio.")
             else:
-                dt_ini = datetime.combine(fecha_ini, hora_ini).isoformat()
-                dt_fin = datetime.combine(fecha_fin, hora_fin).isoformat()
+                dt_ini = inicio.isoformat()
+                dt_fin = fin.isoformat()
                 payload = {
                     "codigo": codigo.strip(),
                     "titulo": titulo.strip(),
