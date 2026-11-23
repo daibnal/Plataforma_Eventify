@@ -10,47 +10,117 @@
 
 ---
 
-## 2. Arquitectura de Datos y Decisiones de Modelado
+# Plataforma Eventify: API + dashboard
 
-Para optimizar los patrones de lectura y escritura bajo alta concurrencia, se estructuró la base de datos `no-sql-ev2` en **4 colecciones principales**:
+Aplicación de referencia para analizar una plataforma de gestión y venta de entradas de eventos (**Eventify**) sobre **MongoDB Atlas**. La arquitectura separa totalmente la visualización del acceso a datos
 
-### A. Colecciones y Estrategias de Almacenamiento
-* **`usuarios`**: Almacena clientes y administradores bajo un **documento plano** con validación estricta de RUN, DV y correo electrónico.
-* **`eventos`**: Colección central que implementa el **patrón de embebido** para *ubicación* y *tickets*. Esto permite que la ficha de un evento se recupere en **una sola lectura atómica**, eliminando `JOINs` costosos.
-* **`ordenes_compra`**: Registro transaccional vinculado mediante **referencias (`ObjectId`)** hacia usuarios y eventos, garantizando escalabilidad ante escrituras masivas concurrentes.
-* **`review_evaluaciones`**: Almacena calificaciones (0-5) y comentarios mediante **referencias (`ObjectId`)**, permitiendo análisis de satisfacción independientes.
+`MongoDB Atlas <--> FastAPI (agregaciones y reglas de negocio) <--> Streamlit`
 
-### B. Principio de Diseño Aplicado
-> *"Se embebe lo que se lee junto, es acotado y cambia poco. Se referencia lo que crece sin límite, se escribe constantemente y se consulta por sí mismo."*
+Streamlit no tiene dependencia de `pymongo`, URI ni credenciales de Atlas: solo consulta la API HTTP. De esta forma se puede reemplazar Streamlit por otra herramienta de BI sin modificar la capa de datos.
 
----
+## Objetivo
+Mostrar cómo diseñar APIs orientadas a analítica y operación sobre MongoDB, integrando operaciones CRUD, consultas de agregación avanzadas y un dashboard interactivo.
 
-## 3. Implementación de la Batería de Consultas Analíticas
+## Colecciones
+- `usuarios`: datos de usuarios de la plataforma.
+- `eventos`: datos de eventos, ubicaciones y tickets.
+- `ordenes_compra`: datos de órdenes de compra de entradas.
+- `review_evaluaciones`: datos de las reseñas y calificaciones de parte de los usuarios.
 
-El motor de agregación de MongoDB resuelve los requerimientos analíticos complejos del negocio de la siguiente manera:
+## Estructura del proyecto
+```text
+Plataforma_Eventify/
+├── .env                   variables de entorno (no subir a Git)
+├── .venv/                 entorno virtual (ignorado por Git)
+├── api/
+│   ├── controllers/
+│   │   ├── dashboard_controller.py
+│   │   ├── evento_controller.py
+│   │   ├── orden_controller.py
+│   │   ├── review_controller.py
+│   │   └── usuario_controller.py
+│   ├── models/
+│   │   ├── evento.py
+│   │   ├── orden_compra.py
+│   │   ├── review_evaluacion.py
+│   │   └── usuario.py
+│   ├── services/
+│   │   ├── dashboard_service.py
+│   │   ├── evento_service.py
+│   │   ├── orden_service.py
+│   │   ├── review_service.py
+│   │   └── usuario_service.py
+│   ├── utils/
+│   │   └── serializer.py
+│   ├── app.py
+│   └── database.py
+├── Codigo_ver1/
+│   ├── init.db.js
+│   └── solucion.mongodb.js
+├── dashboard/
+│   └── app.py
+├── Documentacion_ver1/
+├── requirements.txt
+└── README.md
+```
 
-1. **Consulta 1 — Detalle de Compras por Usuario:** 
-   * *Mecanismo:* Uso de `$lookup` sucesivos y `$unwind` para cruzar la identidad del usuario con sus órdenes de compra y los eventos asociados, filtrando por ciudad y calculando el gasto total acumulado mediante `$group` y `$sum`.
-2. **Consulta 2 — Reporte de Ventas por Evento:** 
-   * *Mecanismo:* Procesamiento puramente interno sobre arreglos embebidos (`$addFields`, `$map`) sin requerir `JOINs`. Calcula el total recaudado, los tickets vendidos y el porcentaje de ocupación, asignando etiquetas automáticas de rendimiento (*"Exitoso"* o *"Por Mejorar"*) vía `$cond`.
-3. **Consulta 3 — Eventos Futuros con Oferta de Tickets:** 
-   * *Mecanismo:* Filtrado temporal estricto usando la variable del sistema `$$NOW`, validación geográfica y uso clave de `$elemMatch` para asegurar que un mismo tipo de ticket cumpla simultáneamente con stock disponible y precio bajo el umbral, proyectando solo los elementos filtrados con `$filter`.
-4. **Consulta 4 — Relación Precio-Satisfacción (Elemento Diferenciador):** 
-   * *Mecanismo:* Cruce analítico con `review_evaluaciones` para evaluar la percepción del cliente frente al costo. Emplea operadores `$avg` directos sobre subdocumentos y protege contra divisiones por cero con `$size` y `$cond`, devolviendo etiquetas semánticas claras (*"Sin evaluaciones"*).
+## Inicio rápido
+Se requiere Python 3.10 o superior.
 
----
+1. Cree y active el entorno virtual:
+```
+  py -m venv .venv
+  .\.venv\Scripts\Activate.ps1
+```
 
-## 4. Scripts de Inicialización y Carga (Seed Data)
+2. Instale dependencias:
+```
+pip install -r requirements.txt
+```
 
-El repositorio incluye la automatización completa para la creación de esquemas y población masiva de datos de prueba (más de 50 documentos validados por colección):
+3. Cree el archivo .env en la raíz del proyecto y complete MONGO_URI y DATABASE_NAME. No suba ese archivo al repositorio:
+```
+MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+DATABASE_NAME=<nombre_de_tu_base_de_datos>
+```
+4. Ejecute la API:
+```
+uvicorn api.app:app --reload --port 8000
+```
 
-* **Definición de Esquemas y Validaciones (`$jsonSchema`):** `solucion.mongodb.js`
-* **Generación de Datos de Prueba (Seed):** `init.db.js`
+5. En otra terminal (con el entorno virtual activo), ejecute el dashboard:
+```
+streamlit run dashboard/app.py
+```
 
-### Instrucciones de Ejecución en MongoDB Shell / Compass:
-```javascript
-// 1. Crear colecciones y reglas de validación estricta
-load("solucion.mongodb.js");
+La documentación interactiva queda disponible en http://127.0.0.1:8000/docs y el dashboard en http://localhost:8501.
 
-// 2. Ejecutar la carga masiva de datos de prueba (Seed)
-load("init.db.js");
+## Endpoints CRUD expuestos (/api/v1)
+
+| Método | Ruta | Descripción |
+| :--- | :--- | :--- |
+| GET | /api/v1/eventos/ | Lista todos los eventos |
+| GET | /api/v1/eventos/ciudad/{ciudad} | Filtra eventos por ciudad |
+| GET | /api/v1/eventos/{codigo} | Busca un evento por su código |
+| POST | /api/v1/eventos/ | Crea un nuevo evento |
+| PUT | /api/v1/eventos/{codigo} | Actualiza un evento existente |
+| DELETE | /api/v1/eventos/{codigo} | Elimina un evento por su código |
+
+## Endpoints analíticos expuestos (/api/v1)
+
+| Método | Ruta | Consulta / KPI |
+| :--- | :--- | :--- |
+| GET | /api/v1/kpis | Consolidado de los 3 KPIs de negocio |
+| GET | /api/v1/consultas/compras-usuario/{run} | Consulta 1: detalle de compras de un usuario en una ciudad ($lookup + $unwind) |
+| GET | /api/v1/consultas/gasto-por-ciudad | Consulta 1: gasto total por usuario y ciudad para visualización |
+| GET | /api/v1/consultas/reporte-ventas | Consulta 2: recaudación, ocupación vs. stock inicial y clasificación ("Exitoso" / "Por Mejorar") |
+| GET | /api/v1/consultas/eventos-futuros | Consulta 3: eventos futuros en una ciudad con tickets disponibles bajo un monto máximo |
+| GET | /api/v1/consultas/calidad-precio | Consulta 4: consulta libre con $lookup (subpipeline), $addFields y $switch sobre precio promedio y calificación |
+
+## Justificación de los 3 KPIs de negocio
+
+| KPI | Justificación |
+| :--- | :--- |
+| Ocupación de eventos activos | Permite medir qué porcentaje del stock inicial de tickets ya se ha vendido en eventos activos para detectar oportunidades de venta o baja convocatoria |
+| Gasto promedio por orden | Refleja el monto promedio gastado por orden de compra (junto al total recaudado) para evaluar el valor medio por transacción en la plataforma |
+| Calificación promedio | Resume la satisfacción general de los asistentes a partir de las reseñas registradas como indicador de calidad del servicio |
