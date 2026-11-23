@@ -63,10 +63,56 @@ Plataforma_Eventify/
 ├── requirements.txt
 └── README.md
 
+
 ## Inicio rápido
+
 Se requiere Python 3.10 o superior.
- Cree y active el entorno virtual:Windows (PowerShell):PowerShellpy -m venv .venv
+
+1. Cree y active el entorno virtual:
+py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-Linux / macOS:Bashpython3 -m venv .venv
-source .venv/bin/activate
-Instale dependencias:Bashpip install -r requirements.txt
+
+2. Instale dependencias:
+pip install -r requirements.txt
+
+3. Cree el archivo .env en la raíz del proyecto y complete MONGO_URI y DATABASE_NAME. No suba ese archivo al repositorio:
+MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+DATABASE_NAME=<nombre_de_tu_base_de_datos>
+
+4. Ejecute la API:
+uvicorn api.app:app --reload --port 8000
+
+5. En otra terminal (con el entorno virtual activo), ejecute el dashboard:
+streamlit run dashboard/app.py
+
+La documentación interactiva queda disponible en http://127.0.0.1:8000/docs y el dashboard en http://localhost:8501.
+
+## Endpoints CRUD expuestos (/api/v1)
+
+| Método | Ruta | Descripción |
+| :--- | :--- | :--- |
+| GET | /api/v1/eventos/ | Lista todos los eventos |
+| GET | /api/v1/eventos/ciudad/{ciudad} | Filtra eventos por ciudad |
+| GET | /api/v1/eventos/{codigo} | Busca un evento por su código |
+| POST | /api/v1/eventos/ | Crea un nuevo evento |
+| PUT | /api/v1/eventos/{codigo} | Actualiza un evento existente |
+| DELETE | /api/v1/eventos/{codigo} | Elimina un evento por su código |
+
+## Endpoints analíticos expuestos (/api/v1)
+
+| Método | Ruta | Consulta / KPI |
+| :--- | :--- | :--- |
+| GET | /api/v1/kpis | Consolidado de los 3 KPIs de negocio |
+| GET | /api/v1/consultas/compras-usuario/{run} | Consulta 1: detalle de compras de un usuario en una ciudad ($lookup + $unwind) |
+| GET | /api/v1/consultas/gasto-por-ciudad | Consulta 1: gasto total por usuario y ciudad para visualización |
+| GET | /api/v1/consultas/reporte-ventas | Consulta 2: recaudación, ocupación vs. stock inicial y clasificación ("Exitoso" / "Por Mejorar") |
+| GET | /api/v1/consultas/eventos-futuros | Consulta 3: eventos futuros en una ciudad con tickets disponibles bajo un monto máximo |
+| GET | /api/v1/consultas/calidad-precio | Consulta 4: consulta libre con $lookup (subpipeline), $addFields y $switch sobre precio promedio y calificación |
+
+## Justificación de los 3 KPIs de negocio
+
+| KPI | Justificación |
+| :--- | :--- |
+| Ocupación de eventos activos | Permite medir qué porcentaje del stock inicial de tickets ya se ha vendido en eventos activos para detectar oportunidades de venta o baja convocatoria |
+| Gasto promedio por orden | Refleja el monto promedio gastado por orden de compra (junto al total recaudado) para evaluar el valor medio por transacción en la plataforma |
+| Calificación promedio | Resume la satisfacción general de los asistentes a partir de las reseñas registradas como indicador de calidad del servicio |
