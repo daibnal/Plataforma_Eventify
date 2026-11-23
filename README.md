@@ -10,47 +10,63 @@
 
 ---
 
-## 2. Arquitectura de Datos y Decisiones de Modelado
+# Plataforma Eventify: API + dashboard
 
-Para optimizar los patrones de lectura y escritura bajo alta concurrencia, se estructuró la base de datos `no-sql-ev2` en **4 colecciones principales**:
+Aplicación de referencia para analizar una plataforma de gestión y venta de entradas de eventos (**Eventify**) sobre **MongoDB Atlas**. La arquitectura separa totalmente la visualización del acceso a datos
 
-### A. Colecciones y Estrategias de Almacenamiento
-* **`usuarios`**: Almacena clientes y administradores bajo un **documento plano** con validación estricta de RUN, DV y correo electrónico.
-* **`eventos`**: Colección central que implementa el **patrón de embebido** para *ubicación* y *tickets*. Esto permite que la ficha de un evento se recupere en **una sola lectura atómica**, eliminando `JOINs` costosos.
-* **`ordenes_compra`**: Registro transaccional vinculado mediante **referencias (`ObjectId`)** hacia usuarios y eventos, garantizando escalabilidad ante escrituras masivas concurrentes.
-* **`review_evaluaciones`**: Almacena calificaciones (0-5) y comentarios mediante **referencias (`ObjectId`)**, permitiendo análisis de satisfacción independientes.
+`MongoDB Atlas <--> FastAPI (agregaciones y reglas de negocio) <--> Streamlit`
 
-### B. Principio de Diseño Aplicado
-> *"Se embebe lo que se lee junto, es acotado y cambia poco. Se referencia lo que crece sin límite, se escribe constantemente y se consulta por sí mismo."*
+Streamlit no tiene dependencia de `pymongo`, URI ni credenciales de Atlas: solo consulta la API HTTP. De esta forma se puede reemplazar Streamlit por otra herramienta de BI sin modificar la capa de datos.
 
----
+## Objetivo
+Mostrar cómo diseñar APIs orientadas a analítica y operación sobre MongoDB, integrando operaciones CRUD, consultas de agregación avanzadas y un dashboard interactivo.
 
-## 3. Implementación de la Batería de Consultas Analíticas
+## Colecciones
+- `usuarios`: datos de usuarios de la plataforma.
+- `eventos`: datos de eventos, ubicaciones y tickets.
+- `ordenes_compra`: datos de órdenes de compra de entradas.
+- `review_evaluaciones`: datos de las reseñas y calificaciones de parte de los usuarios.
 
-El motor de agregación de MongoDB resuelve los requerimientos analíticos complejos del negocio de la siguiente manera:
+## Estructura del proyecto
+```text
+Plataforma_Eventify/
+├── .env                   variables de entorno (no subir a Git)
+├── .venv/                 entorno virtual (ignorado por Git)
+├── api/
+│   ├── controllers/
+│   │   ├── dashboard_controller.py
+│   │   ├── evento_controller.py
+│   │   ├── orden_controller.py
+│   │   ├── review_controller.py
+│   │   └── usuario_controller.py
+│   ├── models/
+│   │   ├── evento.py
+│   │   ├── orden_compra.py
+│   │   ├── review_evaluacion.py
+│   │   └── usuario.py
+│   ├── services/
+│   │   ├── dashboard_service.py
+│   │   ├── evento_service.py
+│   │   ├── orden_service.py
+│   │   ├── review_service.py
+│   │   └── usuario_service.py
+│   ├── utils/
+│   │   └── serializer.py
+│   ├── app.py
+│   └── database.py
+├── Codigo_ver1/
+│   ├── init.db.js
+│   └── solucion.mongodb.js
+├── dashboard/
+│   └── app.py
+├── Documentacion_ver1/
+├── requirements.txt
+└── README.md
 
-1. **Consulta 1 — Detalle de Compras por Usuario:** 
-   * *Mecanismo:* Uso de `$lookup` sucesivos y `$unwind` para cruzar la identidad del usuario con sus órdenes de compra y los eventos asociados, filtrando por ciudad y calculando el gasto total acumulado mediante `$group` y `$sum`.
-2. **Consulta 2 — Reporte de Ventas por Evento:** 
-   * *Mecanismo:* Procesamiento puramente interno sobre arreglos embebidos (`$addFields`, `$map`) sin requerir `JOINs`. Calcula el total recaudado, los tickets vendidos y el porcentaje de ocupación, asignando etiquetas automáticas de rendimiento (*"Exitoso"* o *"Por Mejorar"*) vía `$cond`.
-3. **Consulta 3 — Eventos Futuros con Oferta de Tickets:** 
-   * *Mecanismo:* Filtrado temporal estricto usando la variable del sistema `$$NOW`, validación geográfica y uso clave de `$elemMatch` para asegurar que un mismo tipo de ticket cumpla simultáneamente con stock disponible y precio bajo el umbral, proyectando solo los elementos filtrados con `$filter`.
-4. **Consulta 4 — Relación Precio-Satisfacción (Elemento Diferenciador):** 
-   * *Mecanismo:* Cruce analítico con `review_evaluaciones` para evaluar la percepción del cliente frente al costo. Emplea operadores `$avg` directos sobre subdocumentos y protege contra divisiones por cero con `$size` y `$cond`, devolviendo etiquetas semánticas claras (*"Sin evaluaciones"*).
-
----
-
-## 4. Scripts de Inicialización y Carga (Seed Data)
-
-El repositorio incluye la automatización completa para la creación de esquemas y población masiva de datos de prueba (más de 50 documentos validados por colección):
-
-* **Definición de Esquemas y Validaciones (`$jsonSchema`):** `solucion.mongodb.js`
-* **Generación de Datos de Prueba (Seed):** `init.db.js`
-
-### Instrucciones de Ejecución en MongoDB Shell / Compass:
-```javascript
-// 1. Crear colecciones y reglas de validación estricta
-load("solucion.mongodb.js");
-
-// 2. Ejecutar la carga masiva de datos de prueba (Seed)
-load("init.db.js");
+## Inicio rápido
+Se requiere Python 3.10 o superior.
+ Cree y active el entorno virtual:Windows (PowerShell):PowerShellpy -m venv .venv
+.\.venv\Scripts\Activate.ps1
+Linux / macOS:Bashpython3 -m venv .venv
+source .venv/bin/activate
+Instale dependencias:Bashpip install -r requirements.txt
