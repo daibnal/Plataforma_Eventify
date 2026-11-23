@@ -68,23 +68,29 @@ Plataforma_Eventify/
 Se requiere Python 3.10 o superior.
 
 1. Cree y active el entorno virtual:
-'''text
+```
   py -m venv .venv
   .\.venv\Scripts\Activate.ps1
-'''
-3. Instale dependencias:
-pip install -r requirements.txt
+```
 
-4. Cree el archivo .env en la raíz del proyecto y complete MONGO_URI y DATABASE_NAME. No suba ese archivo al repositorio:
+2. Instale dependencias:
+```
+pip install -r requirements.txt
+```
+
+3. Cree el archivo .env en la raíz del proyecto y complete MONGO_URI y DATABASE_NAME. No suba ese archivo al repositorio:
+```
 MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
 DATABASE_NAME=<nombre_de_tu_base_de_datos>
-
-5. Ejecute la API:
+```
+4. Ejecute la API:
+```
 uvicorn api.app:app --reload --port 8000
+```
 
-6. En otra terminal (con el entorno virtual activo), ejecute el dashboard:
-streamlit run dashboard/app.py
-
+5. En otra terminal (con el entorno virtual activo), ejecute el dashboard:
+```streamlit run dashboard/app.py
+```
 La documentación interactiva queda disponible en http://127.0.0.1:8000/docs y el dashboard en http://localhost:8501.
 
 ## Endpoints CRUD expuestos (/api/v1)
