@@ -78,11 +78,12 @@ Se requiere Python 3.10 o superior.
 pip install -r requirements.txt
 ```
 
-3. Cree el archivo .env en la raíz del proyecto y complete MONGO_URI y DATABASE_NAME. No suba ese archivo al repositorio:
+3. Cree el archivo .env en la raíz del proyecto y complete MONGO_URI y DATABASE_NAME:
 ```
 MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
 DATABASE_NAME=<nombre_de_tu_base_de_datos>
 ```
+
 4. Ejecute la API:
 ```
 uvicorn api.app:app --reload --port 8000
