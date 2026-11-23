@@ -56,7 +56,7 @@ with st.sidebar:
     st.markdown(f"**Endpoint base:** `{API_BASE_URL}`")
 
 # =========================================================
-# 1. TARJETAS DE INDICADORES CLAVE DE NEGOCIO (KPI CARDS)
+# TARJETAS DE INDICADORES CLAVE DE NEGOCIO (KPI CARDS)
 # =========================================================
 st.subheader("1. Indicadores Clave de Negocio (KPIs)")
 kpis, kpi_err = api_get(ENDPOINTS["kpis"])
@@ -88,7 +88,7 @@ else:
 st.divider()
 
 # =========================================================
-# 2. SECCIÓN DE CONSULTAS ANALÍTICAS (EVALUACIÓN 2)
+# 2. SECCIÓN DE CONSULTAS ANALÍTICAS 
 # =========================================================
 st.subheader("2. Consultas Analíticas Avanzadas")
 
@@ -128,7 +128,7 @@ with tab1:
     else:
         st.info("No hay registros de compras por ciudad.")
 
-    with st.expander("🔍 Consultar detalle de compras por RUN de usuario"):
+    with st.expander("Consultar detalle de compras por RUN de usuario"):
         c1_f1, c1_f2, c1_f3, c1_f4 = st.columns([2, 1, 2, 1])
         run_in = c1_f1.text_input("RUN (sin puntos ni guión)", placeholder="12345678")
         dv_in = c1_f2.text_input("DV", placeholder="9", max_chars=1)
